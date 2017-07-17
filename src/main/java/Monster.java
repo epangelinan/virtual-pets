@@ -3,6 +3,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.sql.Timestamp;
 import java.util.Date;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class Monster {
   private String name;
@@ -15,6 +17,7 @@ public class Monster {
   private Timestamp lastSlept;
   private Timestamp lastAte;
   private Timestamp lastPlayed;
+  private Timer timer;
 
   public static final int MAX_FOOD_LEVEL =3;
   public static final int MAX_SLEEP_LEVEL = 8;
@@ -28,6 +31,8 @@ public class Monster {
     playLevel = MAX_PLAY_LEVEL/2;
     sleepLevel = MAX_SLEEP_LEVEL/2;
     foodLevel = MAX_FOOD_LEVEL/2;
+    //We instantiate the Timer in the constructor, because each individual Monster will have an independent timeline. That is, its levels will slowly deplete after it was last attended to; regardless of when other Monsters were cared for.
+    timer = new Timer();
   }
 
   public String getName() {
@@ -116,9 +121,11 @@ public class Monster {
   }
 
   public void depleteLevels() {
-    playLevel--;
-    foodLevel--;
-    sleepLevel--;
+    if (isAlive()) {
+      playLevel--;
+      foodLevel--;
+      sleepLevel--;
+    }
   }
 
   public void play() {
@@ -158,6 +165,27 @@ public class Monster {
         .executeUpdate();
     }
     foodLevel++;
+  }
+
+//We define currentMonster as this outside of the new TimerTask. This is because we need to refer to our Monster within the TimerTask. However, if we used the keyword this inside of run(), it would refer to the TimerTask itself.
+
+//We create a new instance of TimerTask, in order to define a task that should be executed by our Timer at a specified interval.
+
+//We override the TimerTask's run() method, so that running the Timer calls our methods. We use our isAlive() method to check if our Monster is alive. If it's not, we cancel the Timer with its cancel() method. If it is, we run depleteLevels().
+
+//We call this.timer.schedule(), to access the Timer stored on this instance of Monster, and pass in timerTask, 0, and 600. This tells our Timer to wait 0 milliseconds to run the code in TimerTask when the startTimer() method is first executed. Then, to repeat the task every 600 milliseconds.
+  public void startTimer() {
+    Monster currentMonster = this;
+    TimerTask timerTask = new TimerTask(){
+      @Override
+      public void run() {
+        if (currentMonster.isAlive() == false){
+          cancel();
+        }
+        depleteLevels();
+      }
+    };
+    this.timer.schedule(timerTask, 0, 600);
   }
 
 }
