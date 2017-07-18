@@ -1,10 +1,13 @@
 import java.util.Timer;
 import org.sql2o.*;
 import java.util.List;
+import java.sql.Timestamp;
 
 public class FireMonster extends Monster {
   private int fireLevel;
+  public Timestamp lastKindling;
   public static final int MAX_FIRE_LEVEL = 10;
+  public static final String DATABASE_TYPE = "fire";
 
   public FireMonster(String name, int personId) {
     this.name = name;
@@ -14,16 +17,23 @@ public class FireMonster extends Monster {
     foodLevel = MAX_FOOD_LEVEL / 2;
     fireLevel = MAX_FIRE_LEVEL / 2;
     timer = new Timer();
+    type = DATABASE_TYPE;
   }
 
   public int getFireLevel(){
     return fireLevel;
   }
 
+  public Timestamp getLastKindling(){
+    return lastKindling;
+  }
+
   public static List<FireMonster> all() {
-    String sql = "SELECT * FROM monsters;";
+    String sql = "SELECT * FROM monsters WHERE type='fire';";
     try(Connection con = DB.sql2o.open()) {
-      return con.createQuery(sql).executeAndFetch(FireMonster.class);
+      return con.createQuery(sql)
+      .throwOnMappingFailure(false)
+      .executeAndFetch(FireMonster.class);
     }
   }
 
@@ -32,16 +42,10 @@ public class FireMonster extends Monster {
       String sql = "SELECT * FROM monsters where id=:id";
       FireMonster monster = con.createQuery(sql)
         .addParameter("id", id)
+        .throwOnMappingFailure(false)
         .executeAndFetchFirst(FireMonster.class);
       return monster;
     }
-  }
-
-  public void kindling(){
-    if (fireLevel >= MAX_FIRE_LEVEL){
-      throw new UnsupportedOperationException("You cannot give any more kindling!");
-    }
-    fireLevel++;
   }
 
   @Override
@@ -63,6 +67,19 @@ public class FireMonster extends Monster {
       return false;
     }
     return true;
+  }
+
+  public void kindling(){
+    if (fireLevel >= MAX_FIRE_LEVEL){
+      throw new UnsupportedOperationException("You cannot give any more kindling!");
+    }
+    try(Connection con = DB.sql2o.open()) {
+      String sql = "UPDATE monsters SET lastkindling = now() WHERE id = :id";
+      con.createQuery(sql)
+        .addParameter("id", id)
+        .executeUpdate();
+      }
+    fireLevel++;
   }
 
 }
